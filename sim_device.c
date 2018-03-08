@@ -12,15 +12,24 @@
  * - タイマはLinuxのSIGALMを使用する。
  */
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <assert.h>
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+
 //#define NDEBUG    /* アサーションを無効 */
 
 #define LED_NUM 4
 #define SW_NUM 4
+
+#define LOG_SW_FILE "sw_log"
+#define LOG_LED_FILE "led_log"
 
 typedef enum {
     LED01 = 0x01, LED02 = 0x02, LED03 = 0x04, 
@@ -32,7 +41,7 @@ typedef enum {
 } LED_STATE;
 
 typedef enum {
-    SWITCH01 = 0x01, SWITHC02 = 0x02, SWITCH03 = 0x04,
+    SWITCH01 = 0x01, SWITCH02 = 0x02, SWITCH03 = 0x04,
     SWITCH04 = 0x08, SWITCH_ID_NONE = 0x00,
 } SWITCH_ID;
 
@@ -54,6 +63,34 @@ void sim_init_hardware()
 
     for (i = 0; i < SW_NUM; i++)
         sw_state[i] = SWITCH_OFF;
+
+    /** ログで使用するファイルの作成 */
+    char buf[256];
+    int fd;
+    if ((fd = open(LOG_SW_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0) {
+        sprintf(buf, "can not open %s.", LOG_SW_FILE);
+        perror(buf);
+        exit(1);
+    }
+    
+    /** 初期値の書込み */
+    strcpy(buf, "0000");
+    int n;
+    if ((n = write(fd, buf, strlen(buf))) < 0) {
+        sprintf(buf, "can not open %s.", LOG_SW_FILE);
+        perror(buf);
+        exit(1);
+    }
+
+    close(fd);
+
+    if ((fd = open(LOG_LED_FILE, O_WRONLY | O_CREAT | O_TRUNC, 0666)) < 0) {
+        sprintf(buf, "can not open %s.", LOG_LED_FILE);
+        perror(buf);
+        exit(1);
+    }
+
+    close(fd);
 
     func = NULL;
 }
@@ -89,8 +126,7 @@ LED_STATE sim_get_led(LED_ID led)
 }
 
 /** LEDの状態をログに書き込むための文字列生成 */
-static char *create_led_string(LED_ID led, LED_STATE state,
-        const char* str)
+static char *create_led_string(LED_ID led, LED_STATE state, const char* str)
 {
 
     return NULL;
@@ -119,14 +155,56 @@ void sim_set_itimer(uint32_t t, FUNC func)
 /** ログ 
  * @TODO 標準ライブラリ関数は使用できない。
  */
-static void log_write(FILE *fp, const char *str)
+static void log_write(const char *file, const char *str)
 {
 
 }
 
-static void log_read(FILE *fp, char *str)
+static void log_read(const char *file, char *str)
 {
+    int fd;
+    char buf[256];
 
+    if ((fd = open(file, O_RDONLY)) < 0) {
+        sprintf(buf, "can not open %s.", file);
+        perror(buf);
+        return -1;
+    }
+
+    ssize_t n;
+    if ((n = read(fd, buf, sizeof(buf))) < 0) {
+        sprintf(buf, "can not read %s.", file);
+        perror(buf);
+        return -1;
+    }
+
+    close(fd);
+
+    strcpy(str, buf);
+    printf("log read : %s\n", str);
+}
+
+/** ログから取得したデータのビットオンオフの確認 */
+static bool log_check_bit(int sw)
+{
+    char str[256];
+
+    log_read(LOG_SW_FILE, str);
+
+    int i;
+    char ch;
+    for (i = 0; i < SW_NUM; i++) {
+        if ((sw >> i) & 0x01) {
+            ch = str[SW_NUM-i-1];
+            if (ch == '1') {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    return false;
 }
 
 int main()
@@ -134,6 +212,7 @@ int main()
 
     sim_init_hardware();
 
+    /*
     LED_STATE ls = sim_get_led(LED01);
     printf("LED01=%d\n", ls);
     sim_set_led(LED01, LED_ON);
@@ -146,7 +225,24 @@ int main()
     sim_set_led(LED02, LED_OFF);
     sim_set_led(LED03, LED_OFF);
     sim_set_led(LED04, LED_OFF);
+    */
 
+    /*
+    char str[256];
+    log_read(LOG_SW_FILE, str);
+    */
+
+    if (log_check_bit(SWITCH03)) {
+        printf("sw3 is pressed.\n");
+    } else {
+        printf("sw3 is no pressed.\n");
+    }
+
+    if (log_check_bit(SWITCH03)) {
+        printf("sw3 is pressed.\n");
+    } else {
+        printf("sw3 is no pressed.\n");
+    }
     return 0;
 }
 
