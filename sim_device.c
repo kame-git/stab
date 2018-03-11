@@ -49,9 +49,15 @@ typedef enum {
     SWITCH_ON, SWITCH_OFF, SWITCH_STATE_NONE,
 } SWITCH_STATE;
 
+/* グローバル変数 */
 LED_STATE led_state[LED_NUM];   /**< LEDの状態 */
 SWITCH_STATE sw_state[SW_NUM];     /**< SWの状態 */
 void (*func)();         /**< タイマー用コールバック関数 */
+
+/* プロトタイプ宣言 */
+static bool log_check_bit(int sw);
+static void create_led_string(char *str);
+static void log_write(const char *file, const char *str);
 
 /** 初期化関数 */
 void sim_init_hardware()
@@ -107,6 +113,11 @@ void sim_set_led(LED_ID led, LED_STATE state)
         if ((led >> i) & 0x01)
             led_state[i] = state;
     }
+
+	char led_str[LED_NUM] = {'-'};
+	/* グローバル変数led_state配列からログ出力用の文字列を生成 */
+	create_led_string(led_str);	
+	log_write(LOG_SW_FILE, led_str);
 }
 
 LED_STATE sim_get_led(LED_ID led)
@@ -126,18 +137,43 @@ LED_STATE sim_get_led(LED_ID led)
 }
 
 /** LEDの状態をログに書き込むための文字列生成 */
-static char *create_led_string(LED_ID led, LED_STATE state, const char* str)
+//static char *create_led_string(LED_ID led, LED_STATE state, char* str)
+static void create_led_string(char *str)
 {
 
-    return NULL;
+	/*
+	int i;
+
+	for (i = 0; i < SW_NUM; i++) {
+		if (led  >> (SW_NUM-i-1)) {
+			if (state == LED_ON) {
+				*(str+i) = '*';
+			} else {
+				*(str+i)= '-';
+			}
+			break;
+		} else {
+			if (led_state[i] == LED_ON)
+				*(str+i) = '*';
+			else 
+				*(str+i) = '-';
+		}
+	} 
+
+    return str;
+	*/
 }
 
 
 /** スイッチ制御 */
 SWITCH_STATE sim_get_switch(SWITCH_ID sw)
 {
-
-    return SWITCH_STATE_NONE;
+	bool ret =log_check_bit(sw);
+	
+	if (ret)
+		return SWITCH_OFF;
+	else
+		return SWITCH_ON;
 }
 
 typedef void (*FUNC)();
@@ -168,14 +204,14 @@ static void log_read(const char *file, char *str)
     if ((fd = open(file, O_RDONLY)) < 0) {
         sprintf(buf, "can not open %s.", file);
         perror(buf);
-        return -1;
+        exit(1);
     }
 
     ssize_t n;
     if ((n = read(fd, buf, sizeof(buf))) < 0) {
         sprintf(buf, "can not read %s.", file);
         perror(buf);
-        return -1;
+        exit(1);
     }
 
     close(fd);
@@ -232,6 +268,7 @@ int main()
     log_read(LOG_SW_FILE, str);
     */
 
+	/*
     if (log_check_bit(SWITCH03)) {
         printf("sw3 is pressed.\n");
     } else {
@@ -243,6 +280,47 @@ int main()
     } else {
         printf("sw3 is no pressed.\n");
     }
+	*/
+
+	/*
+	if(sim_get_switch(SWITCH01)) {
+		printf("SW1 is ON.\n");
+	} else {
+		printf("SW1 is OFF.\n");
+	}
+
+	if(sim_get_switch(SWITCH01)) {
+		printf("SW1 is ON.\n");
+	} else {
+		printf("SW1 is OFF.\n");
+	}
+	*/
+
+	/* 間違い！ */
+	/*
+	char led_str[LED_NUM];
+	char *str = create_led_string(LED01, LED_ON, led_str);
+	int i;
+	for (i = 0; i < LED_NUM; i++)
+		putchar(led_str[i]);
+	putchar('\n');
+
+	str = create_led_string(LED01, LED_OFF, led_str);
+	for (i = 0; i < LED_NUM; i++)
+		putchar(led_str[i]);
+	putchar('\n');
+
+	str = create_led_string(LED02, LED_ON, led_str);
+	for (i = 0; i < LED_NUM; i++)
+		putchar(led_str[i]);
+	putchar('\n');
+
+	str = create_led_string(LED02, LED_OFF, led_str);
+	for (i = 0; i < LED_NUM; i++)
+		putchar(led_str[i]);
+	putchar('\n');
+	*/
+
     return 0;
 }
 
