@@ -57,7 +57,7 @@ void (*func)();         /**< タイマー用コールバック関数 */
 /* プロトタイプ宣言 */
 static bool log_check_bit(int sw);
 static void create_led_string(char *str);
-static void log_write(const char *file, const char *str);
+static void log_write(const char *file, const char *str, int len);
 
 /** 初期化関数 */
 void sim_init_hardware()
@@ -114,10 +114,10 @@ void sim_set_led(LED_ID led, LED_STATE state)
             led_state[i] = state;
     }
 
-	char led_str[LED_NUM] = {'-'};
-	/* グローバル変数led_state配列からログ出力用の文字列を生成 */
-	create_led_string(led_str);	
-	log_write(LOG_SW_FILE, led_str);
+    char led_str[LED_NUM] = {'-'};
+    /* グローバル変数led_state配列からログ出力用の文字列を生成 */
+    create_led_string(led_str);	
+    log_write(LOG_LED_FILE, led_str, LED_NUM);
 }
 
 LED_STATE sim_get_led(LED_ID led)
@@ -136,34 +136,22 @@ LED_STATE sim_get_led(LED_ID led)
     return LED_STATE_NONE;
 }
 
-/** LEDの状態をログに書き込むための文字列生成 */
-//static char *create_led_string(LED_ID led, LED_STATE state, char* str)
+/**
+ * LEDの状態を文字列に変換
+ * グローバル変数led_stateを確認して文字列(点灯:*、消灯:-)を生成する。
+ * @param[inout] str 生成した文字列を格納
+ */
 static void create_led_string(char *str)
 {
+    int i;
 
-	/*
-	int i;
-
-	for (i = 0; i < SW_NUM; i++) {
-		if (led  >> (SW_NUM-i-1)) {
-			if (state == LED_ON) {
-				*(str+i) = '*';
-			} else {
-				*(str+i)= '-';
-			}
-			break;
-		} else {
-			if (led_state[i] == LED_ON)
-				*(str+i) = '*';
-			else 
-				*(str+i) = '-';
-		}
-	} 
-
-    return str;
-	*/
+    for (i = 0; i < LED_NUM; i++) {
+        if (led_state[SW_NUM-i-1] == LED_ON)
+            *(str+i) = '*';
+        else
+            *(str+i) = '-';
+    }
 }
-
 
 /** スイッチ制御 */
 SWITCH_STATE sim_get_switch(SWITCH_ID sw)
@@ -189,10 +177,33 @@ void sim_set_itimer(uint32_t t, FUNC func)
 }
 
 /** ログ 
- * @TODO 標準ライブラリ関数は使用できない。
  */
-static void log_write(const char *file, const char *str)
+static void log_write(const char *file, const char *str, int len)
 {
+    int fd;
+    char buf[256];
+
+    if ((fd = open(file, O_WRONLY | O_APPEND)) < 0) {
+        sprintf(buf, "can not open %s.", file);
+        perror(buf);
+        exit(1);
+    }
+
+    ssize_t n;
+    if ((n = write(fd, str, len)) < 0) {
+        sprintf(buf, "can not write %s.", file);
+        perror(buf);
+        exit(1);
+    }
+
+    if ((n = write(fd, "\n", 1)) < 0) {
+        sprintf(buf, "can not write %s.", file);
+        perror(buf);
+        exit(1);
+    }
+
+    close(fd);
+
 
 }
 
@@ -217,7 +228,9 @@ static void log_read(const char *file, char *str)
     close(fd);
 
     strcpy(str, buf);
+    /*
     printf("log read : %s\n", str);
+    */
 }
 
 /** ログから取得したデータのビットオンオフの確認 */
@@ -248,7 +261,7 @@ int main()
 
     sim_init_hardware();
 
-    /*
+    
     LED_STATE ls = sim_get_led(LED01);
     printf("LED01=%d\n", ls);
     sim_set_led(LED01, LED_ON);
@@ -261,14 +274,13 @@ int main()
     sim_set_led(LED02, LED_OFF);
     sim_set_led(LED03, LED_OFF);
     sim_set_led(LED04, LED_OFF);
-    */
 
     /*
     char str[256];
     log_read(LOG_SW_FILE, str);
     */
 
-	/*
+    /*
     if (log_check_bit(SWITCH03)) {
         printf("sw3 is pressed.\n");
     } else {
@@ -280,47 +292,32 @@ int main()
     } else {
         printf("sw3 is no pressed.\n");
     }
-	*/
+    */
 
-	/*
-	if(sim_get_switch(SWITCH01)) {
-		printf("SW1 is ON.\n");
-	} else {
-		printf("SW1 is OFF.\n");
-	}
+    /*
+    if(sim_get_switch(SWITCH01)) {
+            printf("SW1 is ON.\n");
+    } else {
+            printf("SW1 is OFF.\n");
+    }
 
-	if(sim_get_switch(SWITCH01)) {
-		printf("SW1 is ON.\n");
-	} else {
-		printf("SW1 is OFF.\n");
-	}
-	*/
+    if(sim_get_switch(SWITCH01)) {
+            printf("SW1 is ON.\n");
+    } else {
+            printf("SW1 is OFF.\n");
+    }
+    */
 
-	/* 間違い！ */
-	/*
-	char led_str[LED_NUM];
-	char *str = create_led_string(LED01, LED_ON, led_str);
-	int i;
-	for (i = 0; i < LED_NUM; i++)
-		putchar(led_str[i]);
-	putchar('\n');
-
-	str = create_led_string(LED01, LED_OFF, led_str);
-	for (i = 0; i < LED_NUM; i++)
-		putchar(led_str[i]);
-	putchar('\n');
-
-	str = create_led_string(LED02, LED_ON, led_str);
-	for (i = 0; i < LED_NUM; i++)
-		putchar(led_str[i]);
-	putchar('\n');
-
-	str = create_led_string(LED02, LED_OFF, led_str);
-	for (i = 0; i < LED_NUM; i++)
-		putchar(led_str[i]);
-	putchar('\n');
-	*/
-
+    /*
+    char str[LED_NUM];
+    led_state[0] = 1;
+    create_led_string(str);
+    log_write(LOG_LED_FILE, str, LED_NUM);
+    
+    led_state[2] = 1;
+    create_led_string(str);
+    log_write(LOG_LED_FILE, str, LED_NUM);
+    */ 
     return 0;
 }
 
