@@ -11,53 +11,13 @@
  *   には「echo "～" > ファイル名」で書込む。
  * - タイマはLinuxのSIGALMを使用する。
  */
-#include <stdio.h>
-#include <string.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <assert.h>
-
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-#include <unistd.h>
-
-//#define NDEBUG    /* アサーションを無効 */
-
-#define LED_NUM 4
-#define SW_NUM 4
-
-#define LOG_SW_FILE "sw_log"
-#define LOG_LED_FILE "led_log"
-
-typedef enum {
-    LED01 = 0x01, LED02 = 0x02, LED03 = 0x04, 
-    LED04 = 0x08, LED_ID_NONE = 0x00,
-} LED_ID;
-
-typedef enum {
-    LED_OFF, LED_ON, LED_STATE_NONE,
-} LED_STATE;
-
-typedef enum {
-    SWITCH01 = 0x01, SWITCH02 = 0x02, SWITCH03 = 0x04,
-    SWITCH04 = 0x08, SWITCH_ID_NONE = 0x00,
-} SWITCH_ID;
-
-typedef enum {
-    SWITCH_ON, SWITCH_OFF, SWITCH_STATE_NONE,
-} SWITCH_STATE;
+#include "log.h"
 
 /* グローバル変数 */
 LED_STATE led_state[LED_NUM];   /**< LEDの状態 */
 SWITCH_STATE sw_state[SW_NUM];     /**< SWの状態 */
 void (*func)();         /**< タイマー用コールバック関数 */
 
-/* プロトタイプ宣言 */
-static bool log_check_bit(int sw);
-static void create_led_string(char *str);
-static void log_write(const char *file, const char *str, int len);
 
 /** 初期化関数 */
 void sim_init_hardware()
@@ -141,7 +101,7 @@ LED_STATE sim_get_led(LED_ID led)
  * グローバル変数led_stateを確認して文字列(点灯:*、消灯:-)を生成する。
  * @param[inout] str 生成した文字列を格納
  */
-static void create_led_string(char *str)
+void create_led_string(char *str)
 {
     int i;
 
@@ -164,7 +124,6 @@ SWITCH_STATE sim_get_switch(SWITCH_ID sw)
 		return SWITCH_ON;
 }
 
-typedef void (*FUNC)();
 
 /** タイマ制御 
  * 指定された時間でコールバック関数を実行する。
@@ -174,150 +133,5 @@ typedef void (*FUNC)();
 void sim_set_itimer(uint32_t t, FUNC func)
 {
 
-}
-
-/** ログ 
- */
-static void log_write(const char *file, const char *str, int len)
-{
-    int fd;
-    char buf[256];
-
-    if ((fd = open(file, O_WRONLY | O_APPEND)) < 0) {
-        sprintf(buf, "can not open %s.", file);
-        perror(buf);
-        exit(1);
-    }
-
-    ssize_t n;
-    if ((n = write(fd, str, len)) < 0) {
-        sprintf(buf, "can not write %s.", file);
-        perror(buf);
-        exit(1);
-    }
-
-    if ((n = write(fd, "\n", 1)) < 0) {
-        sprintf(buf, "can not write %s.", file);
-        perror(buf);
-        exit(1);
-    }
-
-    close(fd);
-
-
-}
-
-static void log_read(const char *file, char *str)
-{
-    int fd;
-    char buf[256];
-
-    if ((fd = open(file, O_RDONLY)) < 0) {
-        sprintf(buf, "can not open %s.", file);
-        perror(buf);
-        exit(1);
-    }
-
-    ssize_t n;
-    if ((n = read(fd, buf, sizeof(buf))) < 0) {
-        sprintf(buf, "can not read %s.", file);
-        perror(buf);
-        exit(1);
-    }
-
-    close(fd);
-
-    strcpy(str, buf);
-    /*
-    printf("log read : %s\n", str);
-    */
-}
-
-/** ログから取得したデータのビットオンオフの確認 */
-static bool log_check_bit(int sw)
-{
-    char str[256];
-
-    log_read(LOG_SW_FILE, str);
-
-    int i;
-    char ch;
-    for (i = 0; i < SW_NUM; i++) {
-        if ((sw >> i) & 0x01) {
-            ch = str[SW_NUM-i-1];
-            if (ch == '1') {
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    return false;
-}
-
-int main()
-{
-
-    sim_init_hardware();
-
-    
-    LED_STATE ls = sim_get_led(LED01);
-    printf("LED01=%d\n", ls);
-    sim_set_led(LED01, LED_ON);
-    ls = sim_get_led(LED01);
-    printf("LED01=%d\n", ls);
-    sim_set_led(LED02, LED_ON);
-    sim_set_led(LED03, LED_ON);
-    sim_set_led(LED04, LED_ON);
-    sim_set_led(LED01, LED_OFF);
-    sim_set_led(LED02, LED_OFF);
-    sim_set_led(LED03, LED_OFF);
-    sim_set_led(LED04, LED_OFF);
-
-    /*
-    char str[256];
-    log_read(LOG_SW_FILE, str);
-    */
-
-    /*
-    if (log_check_bit(SWITCH03)) {
-        printf("sw3 is pressed.\n");
-    } else {
-        printf("sw3 is no pressed.\n");
-    }
-
-    if (log_check_bit(SWITCH03)) {
-        printf("sw3 is pressed.\n");
-    } else {
-        printf("sw3 is no pressed.\n");
-    }
-    */
-
-    /*
-    if(sim_get_switch(SWITCH01)) {
-            printf("SW1 is ON.\n");
-    } else {
-            printf("SW1 is OFF.\n");
-    }
-
-    if(sim_get_switch(SWITCH01)) {
-            printf("SW1 is ON.\n");
-    } else {
-            printf("SW1 is OFF.\n");
-    }
-    */
-
-    /*
-    char str[LED_NUM];
-    led_state[0] = 1;
-    create_led_string(str);
-    log_write(LOG_LED_FILE, str, LED_NUM);
-    
-    led_state[2] = 1;
-    create_led_string(str);
-    log_write(LOG_LED_FILE, str, LED_NUM);
-    */ 
-    return 0;
 }
 
