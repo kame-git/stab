@@ -13,12 +13,18 @@
 #include <fcntl.h>
 #include <unistd.h>
 
+#include <signal.h>
+#include <sys/time.h>
+
 #include "log.h"
 
 //#define NDEBUG    /* アサーションを無効 */
 
 #define LED_NUM 4
 #define SW_NUM 4
+
+#define LOG_SW_FILE "sw_log"
+#define LOG_LED_FILE "led_log"
 
 typedef enum {
     LED01 = 0x01, LED02 = 0x02, LED03 = 0x04, 
@@ -43,11 +49,14 @@ typedef void (*FUNC)();
 void sim_init_hardware();
 void sim_set_led(LED_ID led, LED_STATE state);
 LED_STATE sim_get_led(LED_ID led);
-
 SWITCH_STATE sim_get_switch(SWITCH_ID sw);
 void sim_set_itimer(uint32_t t, FUNC func);
-void sim_set_itimer(uint32_t t, FUNC func);
+void sim_start_itimer();
+void sim_stop_itimer();
 void create_led_string(char *str);
+bool log_check_bit(int sw);
+
+extern LED_STATE led_state[LED_NUM];   /**< LEDの状態 */
 
 #endif /* _SIM_DEVICE_H_ */
 

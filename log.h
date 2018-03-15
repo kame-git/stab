@@ -15,12 +15,8 @@
 
 #include "sim_device.h"
 
-#define LOG_SW_FILE "sw_log"
-#define LOG_LED_FILE "led_log"
-
 void log_write(const char *file, const char *str, int len);
 void log_read(const char *file, char *str);
-bool log_check_bit(int sw);
 
 #endif /* _LOG_H_ */
 

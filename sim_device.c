@@ -16,8 +16,6 @@
 /* グローバル変数 */
 LED_STATE led_state[LED_NUM];   /**< LEDの状態 */
 SWITCH_STATE sw_state[SW_NUM];     /**< SWの状態 */
-void (*func)();         /**< タイマー用コールバック関数 */
-
 
 /** 初期化関数 */
 void sim_init_hardware()
@@ -57,8 +55,6 @@ void sim_init_hardware()
     }
 
     close(fd);
-
-    func = NULL;
 }
 
 /** LED制御 */
@@ -113,17 +109,43 @@ void create_led_string(char *str)
     }
 }
 
+/** ログから取得したデータのビットオンオフの確認 */
+bool log_check_bit(int sw)
+{
+    char str[256];
+
+    log_read(LOG_SW_FILE, str);
+
+    int i;
+    char ch;
+    for (i = 0; i < SW_NUM; i++) {
+        if ((sw >> i) & 0x01) {
+            ch = str[SW_NUM-i-1];
+            if (ch == '1') {
+                return true;
+            } else {
+                return false;
+            }
+        }
+    }
+
+    return false;
+}
+
 /** スイッチ制御 */
 SWITCH_STATE sim_get_switch(SWITCH_ID sw)
 {
-	bool ret =log_check_bit(sw);
+    bool ret =log_check_bit(sw);
 	
-	if (ret)
-		return SWITCH_OFF;
-	else
-		return SWITCH_ON;
+    if (ret)
+	return SWITCH_OFF;
+    else
+	return SWITCH_ON;
 }
 
+
+struct itimerval val; 
+struct sigaction sig; 
 
 /** タイマ制御 
  * 指定された時間でコールバック関数を実行する。
@@ -132,6 +154,52 @@ SWITCH_STATE sim_get_switch(SWITCH_ID sw)
  */
 void sim_set_itimer(uint32_t t, FUNC func)
 {
+    memset(&sig, 0, sizeof(sig));
+    sig.sa_handler = func;
 
+    if (sigaction(SIGALRM, &sig, NULL) < 0) {
+        perror("sigaction");
+        exit(1);
+    }
+
+    val.it_interval.tv_sec = t/1000;
+    val.it_interval.tv_usec = t%1000;
+    //val.it_value = stop_val.it_interval;
+
+}
+
+/**
+ * タイマ動作を開始
+ */
+void sim_start_itimer()
+{
+    if (sig.sa_handler == NULL) {
+        char *msg = "sim_timer_itimer error";
+        write(0, msg, strlen(msg));
+        exit(1);
+    }
+    val.it_value = val.it_interval;
+
+    if (setitimer(ITIMER_REAL, &val, NULL) < 0) {
+        perror("setitimer");
+        exit(1);
+    }
+}
+
+/**
+ * タイマ動作を停止
+ */
+void sim_stop_itimer()
+{
+    struct itimerval stop;
+
+    stop.it_interval.tv_sec = 0;
+    stop.it_interval.tv_usec = 0;
+    stop.it_value = stop.it_interval;
+
+    if (setitimer(ITIMER_REAL, &stop, NULL) < 0) {
+        perror("setitimer");
+        exit(1);
+    }
 }
 

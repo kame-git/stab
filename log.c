@@ -52,31 +52,5 @@ void log_read(const char *file, char *str)
     close(fd);
 
     strcpy(str, buf);
-    /*
-    printf("log read : %s\n", str);
-    */
-}
-
-/** ログから取得したデータのビットオンオフの確認 */
-bool log_check_bit(int sw)
-{
-    char str[256];
-
-    log_read(LOG_SW_FILE, str);
-
-    int i;
-    char ch;
-    for (i = 0; i < SW_NUM; i++) {
-        if ((sw >> i) & 0x01) {
-            ch = str[SW_NUM-i-1];
-            if (ch == '1') {
-                return true;
-            } else {
-                return false;
-            }
-        }
-    }
-
-    return false;
 }
 
