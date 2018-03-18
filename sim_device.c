@@ -132,15 +132,18 @@ bool log_check_bit(int sw)
     return false;
 }
 
-/** スイッチ制御 */
+/** スイッチ制御 
+ * @param[in] sw スイッチ番号(SWITCH_ID)
+ * @return スイッチの状態(SWITCH_ON, SWITCH_OFF)
+ */
 SWITCH_STATE sim_get_switch(SWITCH_ID sw)
 {
     bool ret =log_check_bit(sw);
 	
     if (ret)
-	return SWITCH_OFF;
-    else
 	return SWITCH_ON;
+    else
+	return SWITCH_OFF;
 }
 
 
